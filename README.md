@@ -191,6 +191,14 @@ The API is stateless and already runs replicated (`SERVER_REPLICAS`) behind the 
 routing, with PgBouncer multiplexing database connections and Redis fanning out realtime
 events — raising the replica count on a bigger box is usually all you need.
 
+## Acknowledgements
+
+Outcome stands on excellent open source. Besides the stack components listed above,
+special thanks to
+[**pabloFuente/livekit-server-sdk-dotnet**](https://github.com/pabloFuente/livekit-server-sdk-dotnet) —
+the .NET server SDK for LiveKit that powers Outcome's voice tokens, room management and
+webhooks.
+
 ## License
 
 The contents of this repository (compose file, configuration, documentation) are
