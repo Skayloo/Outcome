@@ -20,6 +20,10 @@
   <img src="docs/images/login.png" alt="Outcome — вход" width="445">
   <img src="docs/images/admin.png" alt="Outcome — админ-консоль" width="445">
 </p>
+<p align="center">
+  <img src="docs/images/mobile-login.png" alt="Мобильный Outcome — вход" width="295">
+  <img src="docs/images/mobile-drawer.png" alt="Мобильный Outcome — каналы" width="295">
+</p>
 
 ## Почему Outcome
 
