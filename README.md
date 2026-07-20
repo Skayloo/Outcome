@@ -44,7 +44,7 @@ from source, and a working instance is one `docker compose up -d` away.
   per-channel overrides, invite-only registration if you want it.
 - **Web admin console** — users, roles, audit log, live server logs, metrics, bug reports.
 - **Sign-in hardening** — TOTP/email 2FA, Argon2id password hashing, session management
-  with one-click "revoke all", optional Google/Yandex SSO.
+  with one-click "revoke all", email-code password reset, optional Google/Yandex SSO.
 - **Scales down and up** — idles under 2 GB RAM; the API is stateless and replicated
   behind PgBouncer + Redis when you need more.
 
