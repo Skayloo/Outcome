@@ -28,6 +28,8 @@ from source, and a working instance is one `docker compose up -d` away.
 
 - **Real-time everything** — messaging over WebSocket with replies, reactions, pins,
   typing indicators, read markers, full-text search, drag-and-drop uploads.
+- **Voice messages** — record in a channel or DM; normalized server-side to m4a so every
+  platform plays them, with a seekable waveform (web + mobile).
 - **Voice & video channels** — group voice, cameras, screen sharing (LiveKit SFU), with
   **end-to-end encrypted media frames**: the server only forwards opaque packets.
 - **Guest voice links** — invite someone into a voice channel with a link, no account needed.
