@@ -15,7 +15,7 @@ name: outcome
 x-logging: &logging
   logging:
     driver: json-file
-    options: { max-size: "10m", max-file: "5" }
+    options: { max-size: "10m", max-file: "2" }
 
 services:
   caddy:
