@@ -30,15 +30,15 @@ from source, and a working instance is one `docker compose up -d` away.
   typing indicators, read markers, full-text search, drag-and-drop uploads.
 - **Voice messages** — record in a channel or DM; normalized server-side to m4a so every
   platform plays them, with a seekable waveform (web + mobile).
-- **Voice & video channels** — group voice, cameras, screen sharing (LiveKit SFU), with
-  **end-to-end encrypted media frames**: the server only forwards opaque packets.
+- **Voice & video channels** — group voice, cameras, screen sharing (LiveKit SFU).
+  Media is encrypted in transit (DTLS-SRTP) between each participant and the SFU.
 - **Guest voice links** — invite someone into a voice channel with a link, no account needed.
-- **E2EE direct messages** — NaCl box (Curve25519); the server stores only ciphertext, with
-  an encrypted key backup so history survives a new device.
+- **Direct messages, friends, blocking** — one-to-one conversations with the same feature
+  set as channels.
 - **1-on-1 calls** — ring a friend, phone-style incoming-call screen; offline calls are
   parked and delivered when they open the app.
 - **A real native mobile app** for iOS and Android — not a webview wrapper: voice channels,
-  E2EE calls and DMs, push-to-talk, the full feature set in your pocket. Store releases are
+  calls and DMs, push-to-talk, the full feature set in your pocket. Store releases are
   rolling out; it connects to any self-hosted instance by hostname.
 - **Multi-instance web client** — the login screen has a server picker (like a Matrix
   homeserver field): one web app can sign into any Outcome instance.
@@ -112,9 +112,20 @@ server"** field on its login screen.
 - `LIVEKIT_NODE_IP` in `.env` **must** be the server's public IP — it's advertised to
   browsers for the media connection (media bypasses the HTTP proxy entirely).
 - UDP `7882` open = good calls. If UDP is blocked, media falls back to TCP `7881`.
-- Voice/video frames are **end-to-end encrypted** between participants; the SFU only
-  forwards opaque packets. Guest links (join a voice channel without an account) are
+- Voice/video is encrypted in transit (DTLS-SRTP) between each participant and the SFU,
+  which decrypts to route it. Guest links (join a voice channel without an account) are
   supported out of the box.
+
+### What this edition does and does not encrypt
+
+This is the **open self-hosted edition**. Everything is encrypted *in transit* (HTTPS/WSS
+via Caddy, DTLS-SRTP for media) and uploads are encrypted *at rest* in MinIO (AES-256-GCM,
+your key). Message text is stored in your Postgres in plaintext — your server, your
+database, but worth knowing before you promise otherwise to your users.
+
+**End-to-end encryption** — where the server itself cannot read direct messages or hear
+calls — is not part of this edition. It ships in the commercial edition; write to us if
+you need it.
 
 ## Mail (optional)
 
