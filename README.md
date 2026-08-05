@@ -59,7 +59,7 @@ Everything around the two Outcome images is stock open source pulled from public
 | [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy) | Edge TLS, auto Let's Encrypt |
 | [PostgreSQL 16](https://hub.docker.com/_/postgres) + [PgBouncer](https://hub.docker.com/r/edoburu/pgbouncer) | Database + connection pooling |
 | [Redis](https://hub.docker.com/_/redis) | Realtime fan-out across API replicas |
-| [MinIO](https://hub.docker.com/r/minio/minio) | File storage (uploads encrypted at rest, AES-256-GCM) |
+| [MinIO](https://hub.docker.com/r/minio/minio) | File storage for uploads |
 | [LiveKit](https://hub.docker.com/r/livekit/livekit-server) | Voice/video SFU (WebRTC) |
 | [docker-mailserver](https://github.com/docker-mailserver/docker-mailserver) | *Optional:* your own mailboxes + app mail |
 
@@ -118,14 +118,18 @@ server"** field on its login screen.
 
 ### What this edition does and does not encrypt
 
-This is the **open self-hosted edition**. Everything is encrypted *in transit* (HTTPS/WSS
-via Caddy, DTLS-SRTP for media) and uploads are encrypted *at rest* in MinIO (AES-256-GCM,
-your key). Message text is stored in your Postgres in plaintext — your server, your
-database, but worth knowing before you promise otherwise to your users.
+This is the **open self-hosted edition**, and it encrypts nothing at rest. Traffic is
+encrypted *in transit* (HTTPS/WSS via Caddy, DTLS-SRTP for media), and that is the whole of
+it: message text sits in your Postgres and uploads sit in your MinIO exactly as they
+arrived. Your server, your disks — but know it before you promise your users otherwise.
 
 **End-to-end encryption** — where the server itself cannot read direct messages or hear
 calls — is not part of this edition. It ships in the commercial edition; write to us if
 you need it.
+
+*Upgrading from 1.8.x or earlier?* Those versions encrypted uploads at rest with your
+`MINIO_ENC_KEY`. Leave that key in your `.env`: nothing new is encrypted with it, but the
+files already in your bucket still need it to be read back.
 
 ## Mail (optional)
 
@@ -199,8 +203,8 @@ Consistent database dump without stopping anything:
 docker compose exec postgres pg_dump -U outcome -Fc outcome > outcome-$(date +%F).dump
 ```
 
-Also back up your `.env` — `MINIO_ENC_KEY` in particular: uploaded files are encrypted
-at rest with it and are unreadable without it.
+Also back up your `.env`. If it still carries a `MINIO_ENC_KEY` from an older install,
+that one matters most: files uploaded back then are unreadable without it.
 
 ## Scaling
 

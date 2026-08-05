@@ -79,8 +79,14 @@ services:
       OUTCOME_Minio__SecretKey: "${MINIO_SECRET_KEY}"
       OUTCOME_Minio__Bucket: "${MINIO_BUCKET}"
       OUTCOME_Minio__UseSsl: "false"
-      # AES-256-GCM at-rest encryption for uploaded files (base64 of 32 bytes).
-      OUTCOME_Minio__EncryptionKey: "${MINIO_ENC_KEY}"
+      # At-rest encryption of uploads is OFF in this edition, so a fresh install leaves this
+      # empty and files are stored as they were uploaded.
+      #
+      # It is still passed through, and that is deliberate. If you installed an earlier version
+      # you have a bucket full of AES-256-GCM objects and MINIO_ENC_KEY still in your .env —
+      # KEEP IT THERE. The server no longer encrypts anything it writes, but it needs the key to
+      # decrypt what is already stored. Drop the key and those files become unreadable.
+      OUTCOME_Minio__EncryptionKey: "${MINIO_ENC_KEY:-}"
       OUTCOME_Voice__LiveKitApiKey: "${LIVEKIT_API_KEY}"
       OUTCOME_Voice__LiveKitApiSecret: "${LIVEKIT_API_SECRET}"
       # Browser-facing signaling URL (rides the same-origin /livekit proxy through Caddy).
