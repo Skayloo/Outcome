@@ -12,6 +12,11 @@ set -e
 
 : "${OUTCOME_DOMAIN:?OUTCOME_DOMAIN is required}"
 HOST="turn.$OUTCOME_DOMAIN"
+# 5349 is the registered TURNS port, which is exactly why it is worth being able to move:
+# consumer routers with a SIP helper intercept 3478/5349 for their own VoIP stack and never
+# forward them, silently. LiveKit both listens on this and advertises it to clients, so the
+# external and internal port have to be the same number.
+PORT="${TURN_TLS_PORT:-5349}"
 
 # Caddy keeps certificates at <data>/caddy/certificates/<issuer>/<host>/<host>.crt. The issuer
 # directory is named after the ACME endpoint and changes between staging and production (and
@@ -27,11 +32,11 @@ if [ -n "$CRT" ] && [ -n "$KEY" ]; then
 turn:
   enabled: true
   domain: $HOST
-  tls_port: 5349
+  tls_port: $PORT
   cert_file: $CRT
   key_file: $KEY
 EOF
-  echo "livekit: TURN over TLS enabled for $HOST"
+  echo "livekit: TURN over TLS enabled for $HOST:$PORT"
 else
   echo "livekit: no certificate for $HOST yet — starting WITHOUT TURN."
   echo "livekit: point $HOST at this server in DNS; Caddy issues on the next request,"

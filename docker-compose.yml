@@ -217,6 +217,7 @@ services:
       # LiveKit reads keys from LIVEKIT_KEYS ("key: secret"), kept out of the config file.
       # The entrypoint builds turn.<domain> from this to find Caddy's certificate.
       OUTCOME_DOMAIN: "${OUTCOME_DOMAIN}"
+      TURN_TLS_PORT: "${TURN_TLS_PORT:-5349}"
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
       # Full config INLINE because the webhook section must name the signing key id,
       # which lives in env — Compose interpolates it here; a static file can't.
@@ -242,7 +243,7 @@ services:
       # TURN over TLS. For anyone whose network mangles UDP — a corporate firewall, a phone
       # on a bad carrier, a VPN that proxies TCP well and UDP badly — media arrives here
       # instead, looking like an ordinary TLS connection.
-      - "5349:5349"
+      - "${TURN_TLS_PORT:-5349}:${TURN_TLS_PORT:-5349}"
       - "7882:7882/udp"                      # ICE/UDP — single muxed port, all participants
     depends_on:
       redis: { condition: service_healthy }
