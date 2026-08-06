@@ -196,12 +196,27 @@ services:
 
   livekit:
     image: livekit/livekit-server:latest
+    # A wrapper around livekit-server: it enables the TURN relay only when Caddy has actually
+    # issued the certificate for turn.<domain>. livekit-server EXITS outright when turn is on
+    # and the file is missing, which is the normal state before DNS is pointed — and losing
+    # voice entirely in order to add a fallback to it is the wrong way round.
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     # --node-ip advertises the host's PUBLIC IP for media (ICE); media bypasses Caddy.
     command: ["--node-ip", "${LIVEKIT_NODE_IP}"]
+    volumes:
+      - ./livekit-entrypoint.sh:/entrypoint.sh:ro
+      - caddy_data:/caddy:ro
+    labels:
+      # This serves nothing useful. Its only job is to make Caddy get a certificate for the
+      # TURN host; the relay does not speak HTTP and never goes through Caddy.
+      caddy: turn.${OUTCOME_DOMAIN}
+      caddy.respond: "204"
     restart: unless-stopped
     <<: *logging
     environment:
       # LiveKit reads keys from LIVEKIT_KEYS ("key: secret"), kept out of the config file.
+      # The entrypoint builds turn.<domain> from this to find Caddy's certificate.
+      OUTCOME_DOMAIN: "${OUTCOME_DOMAIN}"
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
       # Full config INLINE because the webhook section must name the signing key id,
       # which lives in env — Compose interpolates it here; a static file can't.
@@ -224,6 +239,10 @@ services:
     ports:
       # 7880 (signal) stays internal — the API proxies it. Media MUST be host-reachable:
       - "7881:7881"                          # ICE/TCP fallback
+      # TURN over TLS. For anyone whose network mangles UDP — a corporate firewall, a phone
+      # on a bad carrier, a VPN that proxies TCP well and UDP badly — media arrives here
+      # instead, looking like an ordinary TLS connection.
+      - "5349:5349"
       - "7882:7882/udp"                      # ICE/UDP — single muxed port, all participants
     depends_on:
       redis: { condition: service_healthy }
