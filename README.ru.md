@@ -21,8 +21,10 @@
   <img src="docs/images/admin.png" alt="Outcome — админ-консоль" width="445">
 </p>
 <p align="center">
-  <img src="docs/images/mobile-login.png" alt="Мобильный Outcome — вход" width="295">
-  <img src="docs/images/mobile-drawer.png" alt="Мобильный Outcome — каналы" width="295">
+  <img src="docs/images/mobile-login.png" alt="Outcome для iOS — вход" width="215">
+  <img src="docs/images/mobile-chat.png" alt="Outcome для iOS — канал" width="215">
+  <img src="docs/images/mobile-drawer.png" alt="Outcome для iOS — личные сообщения" width="215">
+  <img src="docs/images/mobile-settings.png" alt="Outcome для iOS — настройки" width="215">
 </p>
 
 ## Почему Outcome

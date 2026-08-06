@@ -20,8 +20,10 @@ from source, and a working instance is one `docker compose up -d` away.
   <img src="docs/images/admin.png" alt="Outcome — admin console" width="445">
 </p>
 <p align="center">
-  <img src="docs/images/mobile-login.png" alt="Outcome mobile — login" width="295">
-  <img src="docs/images/mobile-drawer.png" alt="Outcome mobile — channels" width="295">
+  <img src="docs/images/mobile-login.png" alt="Outcome for iOS — sign in" width="215">
+  <img src="docs/images/mobile-chat.png" alt="Outcome for iOS — a channel" width="215">
+  <img src="docs/images/mobile-drawer.png" alt="Outcome for iOS — direct messages" width="215">
+  <img src="docs/images/mobile-settings.png" alt="Outcome for iOS — settings" width="215">
 </p>
 
 ## Why Outcome
