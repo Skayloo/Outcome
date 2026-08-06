@@ -127,7 +127,7 @@ arrived. Your server, your disks — but know it before you promise your users o
 calls — is not part of this edition. It ships in the commercial edition; write to us if
 you need it.
 
-*Upgrading from 1.8.x or earlier?* Those versions encrypted uploads at rest with your
+*Upgrading from 1.29 or earlier or earlier?* Those versions encrypted uploads at rest with your
 `MINIO_ENC_KEY`. Leave that key in your `.env`: nothing new is encrypted with it, but the
 files already in your bucket still need it to be read back.
 
