@@ -127,9 +127,20 @@ arrived. Your server, your disks — but know it before you promise your users o
 calls — is not part of this edition. It ships in the commercial edition; write to us if
 you need it.
 
-*Upgrading from 1.29 or earlier or earlier?* Those versions encrypted uploads at rest with your
-`MINIO_ENC_KEY`. Leave that key in your `.env`: nothing new is encrypted with it, but the
-files already in your bucket still need it to be read back.
+**Upgrading from 1.29 or earlier, with `MINIO_ENC_KEY` set?** Those versions encrypted
+uploads at rest. This one contains no decryption at all, so convert the bucket **before** you
+upgrade — afterwards those files are ciphertext nothing can open:
+
+```bash
+docker run --rm --network <your compose network> \
+  -e MINIO_ENDPOINT=minio:9000 -e MINIO_ACCESS_KEY=… -e MINIO_SECRET_KEY=… \
+  -e MINIO_BUCKET=outcome -e MINIO_ENC_KEY="<the key from your .env>" \
+  -e DRY_RUN=1 skayloo/outcome-decrypt-bucket:latest      # then again without DRY_RUN
+```
+
+It rewrites encrypted objects as plaintext in place, skips what is already plaintext, never
+deletes, and is safe to re-run. Once it reports `0 rewritten`, drop `MINIO_ENC_KEY` and
+upgrade.
 
 ## Mail (optional)
 
@@ -203,8 +214,9 @@ Consistent database dump without stopping anything:
 docker compose exec postgres pg_dump -U outcome -Fc outcome > outcome-$(date +%F).dump
 ```
 
-Also back up your `.env`. If it still carries a `MINIO_ENC_KEY` from an older install,
-that one matters most: files uploaded back then are unreadable without it.
+Also back up your `.env`. If it still carries a `MINIO_ENC_KEY` from an older install, keep
+it until you have run the bucket conversion above — files uploaded back then are unreadable
+without it.
 
 ## Scaling
 
