@@ -43,4 +43,9 @@ else
   echo "livekit: and TURN comes up when this container is next restarted."
 fi
 
+# LIVEKIT_CONFIG must go before exec: livekit-server prefers the config in that variable over
+# the --config file, so leaving it set means the file we just wrote — turn block and all — is
+# read by nobody. It fails silently: the log line above still says TURN is enabled, docker
+# still publishes the port, and the only symptom is that nothing is listening behind it.
+unset LIVEKIT_CONFIG
 exec /livekit-server --config /tmp/livekit.yaml "$@"
