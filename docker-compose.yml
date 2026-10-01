@@ -50,8 +50,9 @@ services:
       # out to the API replicas.
       caddy: ${OUTCOME_DOMAIN}, www.${OUTCOME_DOMAIN}
       caddy.encode: zstd gzip
-      # Uploads can be up to 10 MB (enforced by the app); allow some headroom.
-      caddy.request_body.max_size: 12MB
+      # The API takes uploads up to 100 MB, and call recordings arrive in 16 MB parts;
+      # 12 MB here refused both with a 413 before they reached it. Same as the reference.
+      caddy.request_body.max_size: 110MB
       caddy.reverse_proxy: "{{upstreams 80}}"
     depends_on: [server]
     deploy:
