@@ -44,11 +44,11 @@ from source, and a working instance is one `docker compose up -d` away.
   rolling out; it connects to any self-hosted instance by hostname.
 - **Multi-instance web client** — the login screen has a server picker (like a Matrix
   homeserver field): one web app can sign into any Outcome instance.
-- **Roles & permissions, invites, moderation** — Discord-semantics permission bits with
-  per-channel overrides, invite-only registration if you want it.
+- **Roles, invites, moderation** — owner, admins and moderators in every server, the
+  instance's own administrators above them; open or invite-only registration.
 - **Web admin console** — users, roles, audit log, live server logs, metrics, bug reports.
-- **Sign-in hardening** — TOTP/email 2FA, Argon2id password hashing, session management
-  with one-click "revoke all", email-code password reset, optional Google/Yandex SSO.
+- **Sign-in hardening** — TOTP two-factor authentication, Argon2id password hashing,
+  session management with one-click "revoke all".
 - **Scales down and up** — idles under 2 GB RAM; the API is stateless and replicated
   behind PgBouncer + Redis when you need more.
 
@@ -61,9 +61,8 @@ Everything around the two Outcome images is stock open source pulled from public
 | [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy) | Edge TLS, auto Let's Encrypt |
 | [PostgreSQL 16](https://hub.docker.com/_/postgres) + [PgBouncer](https://hub.docker.com/r/edoburu/pgbouncer) | Database + connection pooling |
 | [Redis](https://hub.docker.com/_/redis) | Realtime fan-out across API replicas |
-| [MinIO](https://hub.docker.com/r/minio/minio) | File storage for uploads |
+| [MinIO](https://quay.io/repository/minio/minio) | File storage for uploads |
 | [LiveKit](https://hub.docker.com/r/livekit/livekit-server) | Voice/video SFU (WebRTC) |
-| [docker-mailserver](https://github.com/docker-mailserver/docker-mailserver) | *Optional:* your own mailboxes + app mail |
 
 ## Requirements
 
@@ -77,7 +76,7 @@ Everything around the two Outcome images is stock open source pulled from public
   | 80, 443 tcp (+ 443 udp) | Web, API, WebSocket, HTTP/3 |
   | 7881 tcp | Voice/video media — TCP fallback |
   | 7882 udp | Voice/video media — main path |
-  | 25, 465, 587, 993 tcp | Only if you enable the bundled mail server |
+  | 5349 tcp | TURN relay over TLS, for networks that block the two above (`TURN_TLS_PORT`) |
 
 ## DNS
 
@@ -88,6 +87,7 @@ to obtain certificates):
 |---|---|
 | `A` `@` (or your subdomain) | your server IP |
 | `A` `www` | your server IP |
+| `A` `turn` | your server IP (the TURN relay's certificate) |
 
 ## Quick start
 
@@ -103,8 +103,13 @@ First boot takes a minute or two: Postgres initializes, migrations run (safe wit
 API replicas — they serialize behind an advisory lock), Caddy obtains certificates.
 
 Then open `https://your-domain` — the **first-run wizard** creates the owner account and
-hands you an unlimited invite code for your friends. Registration is invite-based:
-share invite links from the app; manage everything else in the admin console.
+hands you an unlimited invite code for your friends. Registration is open by default; an
+invite code puts the new account straight into your server. Make registration invite-only,
+or close it, in the admin console (`/admin` → Server settings).
+
+**Forgotten passwords.** The server sends no e-mail, so there is no "reset by e-mail" link:
+an administrator sets a new password in `/admin` → Users → the person's menu → "Set
+password". It signs the person out everywhere; give them the new password yourself.
 
 The mobile app connects to your instance too — enter your domain in the **"Change
 server"** field on its login screen.
@@ -118,82 +123,70 @@ server"** field on its login screen.
   which decrypts to route it. Guest links (join a voice channel without an account) are
   supported out of the box.
 
-### What this edition does and does not encrypt
+## Already running a web server on 80/443?
 
-This is the **open self-hosted edition**, and it encrypts nothing at rest. Traffic is
-encrypted *in transit* (HTTPS/WSS via Caddy, DTLS-SRTP for media), and that is the whole of
-it: message text sits in your Postgres and uploads sit in your MinIO exactly as they
-arrived. Your server, your disks — but know it before you promise your users otherwise.
+The bundled Caddy wants ports 80 and 443 for itself. If another reverse proxy already holds
+them, switch Caddy off and publish the web app on a local port instead — create
+`docker-compose.override.yml` next to `docker-compose.yml`:
 
-**End-to-end encryption** — where the server itself cannot read direct messages or hear
-calls — is not part of this edition. It ships in the commercial edition; write to us if
-you need it.
-
-**Upgrading from 1.29 or earlier, with `MINIO_ENC_KEY` set?** Those versions encrypted
-uploads at rest. This one contains no decryption at all, so convert the bucket **before** you
-upgrade — afterwards those files are ciphertext nothing can open:
-
-```bash
-docker run --rm --network <your compose network> \
-  -e MINIO_ENDPOINT=minio:9000 -e MINIO_ACCESS_KEY=… -e MINIO_SECRET_KEY=… \
-  -e MINIO_BUCKET=outcome -e MINIO_ENC_KEY="<the key from your .env>" \
-  -e DRY_RUN=1 skayloo/outcome-decrypt-bucket:latest      # then again without DRY_RUN
+```yaml
+services:
+  caddy:
+    profiles: ["off"]          # not started
+  frontend:
+    ports:
+      - "127.0.0.1:8080:80"
 ```
 
-It rewrites encrypted objects as plaintext in place, skips what is already plaintext, never
-deletes, and is safe to re-run. Once it reports `0 rewritten`, drop `MINIO_ENC_KEY` and
-upgrade.
+Then point your proxy at `http://127.0.0.1:8080` for `your-domain`, with WebSocket
+upgrades allowed and request bodies up to 110 MB. For example, Caddy:
 
-## Mail (optional)
+```
+your-domain {
+    request_body { max_size 110MB }
+    reverse_proxy 127.0.0.1:8080
+}
+```
 
-Without mail, sign-up confirmation codes are printed to the server log
-(`docker compose logs server | grep -i code`) — fine for trying things out.
+or nginx (inside your `server { … }` for the domain, with its certificate):
 
-For real deployments, either point `EMAIL_*` in `.env` at any external SMTP provider, or
-run the bundled full mail server (Postfix + Dovecot + rspamd + DKIM — your own mailboxes
-on your own domain):
+```nginx
+client_max_body_size 110m;
+location / {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 3600s;
+}
+```
 
-1. Add DNS records:
+If the proxy itself runs in Docker, publish no port: put the web app on the proxy's network
+and point the proxy at `http://outcome-web:80` instead —
 
-   | Record | Value |
-   |---|---|
-   | `A` `mail` | your server IP |
-   | `MX` `@` | `mail.<your-domain>` (priority 10) |
-   | `TXT` `@` | `v=spf1 mx -all` |
-   | `TXT` `_dmarc` | `v=DMARC1; p=quarantine; rua=mailto:admin@<your-domain>` |
+```yaml
+services:
+  caddy:
+    profiles: ["off"]
+  frontend:
+    networks:
+      default: {}
+      proxy:
+        aliases: ["outcome-web"]
+networks:
+  proxy:
+    external: true
+    name: your-proxys-network      # docker network ls
+```
 
-2. Start it (first boot may restart a few times while Caddy obtains the mail host's
-   certificate — that's normal):
+(caddy-docker-proxy needs nothing more: the web app already carries the labels it reads.)
 
-   ```bash
-   docker compose --profile mail up -d
-   ```
-
-3. Create the app's sending account and your mailbox:
-
-   ```bash
-   docker compose exec mailserver setup email add no-reply@<your-domain>
-   docker compose exec mailserver setup email add you@<your-domain>
-   ```
-
-4. Generate DKIM keys and publish the printed TXT record:
-
-   ```bash
-   docker compose exec mailserver setup config dkim keysize 2048
-   cat mail-config/opendkim/keys/<your-domain>/mail.txt   # → publish as DNS TXT
-   docker compose restart mailserver
-   ```
-
-5. Point the app at it in `.env` (`EMAIL_HOST=mail.<your-domain>`, port 587,
-   `EMAIL_USE_SSL=false`, the no-reply account credentials), then
-   `docker compose up -d server`.
-
-6. **Ask your hoster to set the PTR (reverse DNS) record** of your IP to
-   `mail.<your-domain>` — without it most providers will spam-folder or refuse your mail.
-   Check yourself at [mail-tester.com](https://www.mail-tester.com).
-
-Read your mailbox with any IMAP app: host `mail.<your-domain>`, port 993 (SSL),
-SMTP 465/587.
+Voice still goes straight to LiveKit on 7881/7882, not through the proxy. The TURN relay
+on 5349 starts only once the bundled Caddy has a certificate for `turn.your-domain`, so
+with Caddy off it stays off and calls use 7881/7882 alone.
 
 ## Updating
 
@@ -208,7 +201,7 @@ prefer explicit version bumps over `latest`.
 ## Backups
 
 All state lives in named Docker volumes: `pgdata` (database), `minio_data` (uploaded
-files), `maildata`/`mailstate` (mail, if enabled), `caddy_data` (certificates).
+files), `caddy_data` (certificates).
 
 Consistent database dump without stopping anything:
 
@@ -216,9 +209,7 @@ Consistent database dump without stopping anything:
 docker compose exec postgres pg_dump -U outcome -Fc outcome > outcome-$(date +%F).dump
 ```
 
-Also back up your `.env`. If it still carries a `MINIO_ENC_KEY` from an older install, keep
-it until you have run the bucket conversion above — files uploaded back then are unreadable
-without it.
+Also back up your `.env`.
 
 ## Scaling
 
