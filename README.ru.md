@@ -2,16 +2,23 @@
 
 *Живой чат — твой сервер, твои правила.*
 
+[![License: AGPL-3.0](https://img.shields.io/badge/source-AGPL--3.0-blue)](https://github.com/Skayloo/Outcome-source-blue/blob/main/LICENSE)
+[![Kit: MIT](https://img.shields.io/badge/deploy%20kit-MIT-green)](LICENSE)
+[![Docker pulls](https://img.shields.io/docker/pulls/skayloo/outcome-server)](https://hub.docker.com/r/skayloo/outcome-server)
+
 **🇬🇧 [Read in English → README.md](README.md)**
 
-> **Ранняя альфа.** Outcome активно разрабатывается и ещё не закалён для продакшена.
-> Пока не используйте его для чувствительной переписки. Багрепорты очень приветствуются —
-> заводите issue прямо здесь.
+> Outcome молодой и быстро развивается — релизы выходят каждую неделю. Нашли шероховатость?
+> Заведите issue здесь — его прочитают.
 
 **Outcome** — self-hosted чат-платформа в духе Discord, которая целиком работает на
 **вашем** железе: без облаков, **без телеметрии**, без платных тарифов. Этот репозиторий —
 **комплект развёртывания**: один compose-файл + готовые Docker-образы. Ничего не нужно
 собирать из исходников — рабочий инстанс поднимается одной командой `docker compose up -d`.
+Исходный код — свободное ПО ([AGPL-3.0](https://github.com/Skayloo/Outcome-source-blue)).
+
+**Попробовать без установки:** бесплатный аккаунт на [outcome.ru](https://outcome.ru) — то же
+приложение, размещённое у нас. Или сразу к [быстрому старту](#быстрый-старт).
 
 <p align="center">
   <img src="docs/images/app.png" alt="Outcome — основной чат" width="900">
