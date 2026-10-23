@@ -249,7 +249,8 @@ webhooks.
 The contents of this repository (compose file, configuration, documentation) are
 MIT-licensed — see [LICENSE](LICENSE).
 
-The `outcome-server` and `outcome-frontend` Docker images contain proprietary software:
-**free to pull and self-host for any personal or commercial use**, but decompiling,
-modifying or redistributing the images or their contents is not permitted. The source
-code is not public.
+The `outcome-server` and `outcome-frontend` images are built from
+[Outcome-source-blue](https://github.com/Skayloo/Outcome-source-blue), which is free software
+under the **GNU Affero General Public License v3** (AGPL-3.0-only): run it for any purpose,
+commercial included, change it, build your own images. If you let people use a modified version
+over a network, offer them its source.
