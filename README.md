@@ -8,8 +8,8 @@
 
 **🇷🇺 [Читать по-русски → README.ru.md](README.ru.md)**
 
-> Outcome is young and moves fast — releases land weekly. Found something rough? Open an issue
-> here; it gets read.
+> **Stable.** Outcome runs in production every day — on outcome.ru and in companies' own spaces —
+> and releases land weekly. Found a bug? Open an issue here; it gets read.
 
 **Outcome** is a self-hosted, Discord-style chat platform that runs entirely on **your**
 hardware — no cloud dependency, **no telemetry**, no paid tiers. This repository is the
