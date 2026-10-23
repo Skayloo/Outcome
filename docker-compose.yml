@@ -210,7 +210,16 @@ services:
   storage-migrate:
     profiles: ["migrate"]
     image: rclone/rclone:1.68.2
-    command: ["copy", "old:${MINIO_BUCKET}", "new:${MINIO_BUCKET}", "--s3-no-check-bucket", "-v", "--stats-one-line"]
+    # An install that never stored a file has no bucket in MinIO — then there is nothing to copy.
+    # Wrong keys still fail: listing the buckets needs them.
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        rclone lsd old: > /tmp/buckets &&
+        if grep -q " ${MINIO_BUCKET}$$" /tmp/buckets;
+        then rclone copy "old:${MINIO_BUCKET}" "new:${MINIO_BUCKET}" --s3-no-check-bucket -v --stats-one-line;
+        else echo "MinIO holds no ${MINIO_BUCKET} bucket: nothing was ever stored, nothing to copy";
+        fi
     environment:
       RCLONE_CONFIG_OLD_TYPE: s3
       RCLONE_CONFIG_OLD_PROVIDER: Minio
