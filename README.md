@@ -61,7 +61,7 @@ Everything around the two Outcome images is stock open source pulled from public
 | [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy) | Edge TLS, auto Let's Encrypt |
 | [PostgreSQL 16](https://hub.docker.com/_/postgres) + [PgBouncer](https://hub.docker.com/r/edoburu/pgbouncer) | Database + connection pooling |
 | [Redis](https://hub.docker.com/_/redis) | Realtime fan-out across API replicas |
-| [MinIO](https://quay.io/repository/minio/minio) | File storage for uploads |
+| [Garage](https://garagehq.deuxfleurs.fr/) | File storage (S3) for uploads |
 | [LiveKit](https://hub.docker.com/r/livekit/livekit-server) | Voice/video SFU (WebRTC) |
 
 ## Requirements
@@ -198,9 +198,28 @@ docker compose up -d
 Database migrations run automatically on API start. Pin `OUTCOME_TAG` in `.env` if you
 prefer explicit version bumps over `latest`.
 
+### Upgrading from MinIO (1.31.78 and earlier)
+
+Files used to live in MinIO, which no longer publishes its images; they now live in
+[Garage](https://garagehq.deuxfleurs.fr/). An install that has run MinIO still has its image and
+its `minio_data` volume — copy the files across once:
+
+```bash
+git pull                     # the kit: compose file and garage.toml
+# add GARAGE_RPC_SECRET, GARAGE_ACCESS_KEY and GARAGE_SECRET_KEY to .env (commands at the top of
+# .env.example) — and keep your MINIO_ACCESS_KEY / MINIO_SECRET_KEY lines for now
+docker compose up -d garage
+docker compose --profile migrate run --rm storage-migrate     # copies every file, deletes nothing
+docker compose up -d                                          # the server now uses Garage
+docker compose --profile migrate rm -sf minio
+```
+
+Check that pictures and files open, then remove the old volume
+(`docker volume rm <project>_minio_data`, see `docker volume ls`) and the two `MINIO_*` keys.
+
 ## Backups
 
-All state lives in named Docker volumes: `pgdata` (database), `minio_data` (uploaded
+All state lives in named Docker volumes: `pgdata` (database), `garage_data` and `garage_meta` (uploaded
 files), `caddy_data` (certificates).
 
 Consistent database dump without stopping anything:

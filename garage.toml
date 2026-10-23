@@ -1,0 +1,17 @@
+# Garage — the file storage (uploads, avatars, call recordings), one node, no replicas.
+# No secrets here: the RPC secret, the access key and the bucket come from .env through the
+# environment (GARAGE_RPC_SECRET, GARAGE_DEFAULT_*), and the container runs
+# `garage server --single-node --default-bucket`, which lays the cluster out and makes the key
+# and the bucket by itself.
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+# LMDB, the default, can be corrupted by an unclean shutdown (a power cut); SQLite cannot.
+db_engine = "sqlite"
+replication_factor = 1
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+# What the S3 client signs with by default; anything else is refused with a redirect to it.
+s3_region = "us-east-1"
+api_bind_addr = "[::]:3900"

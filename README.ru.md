@@ -66,7 +66,7 @@
 | [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy) | Edge TLS, автоматический Let's Encrypt |
 | [PostgreSQL 16](https://hub.docker.com/_/postgres) + [PgBouncer](https://hub.docker.com/r/edoburu/pgbouncer) | База + пул соединений |
 | [Redis](https://hub.docker.com/_/redis) | Реалтайм-рассылка между репликами API |
-| [MinIO](https://quay.io/repository/minio/minio) | Хранилище загруженных файлов |
+| [Garage](https://garagehq.deuxfleurs.fr/) | Хранилище загруженных файлов (S3) |
 | [LiveKit](https://hub.docker.com/r/livekit/livekit-server) | Голос/видео SFU (WebRTC) |
 
 ## Требования
@@ -204,9 +204,28 @@ docker compose up -d
 Миграции базы накатываются автоматически при старте API. Закрепите `OUTCOME_TAG` в
 `.env`, если предпочитаете явные версии вместо `latest`.
 
+### Переезд с MinIO (1.31.78 и раньше)
+
+Файлы раньше лежали в MinIO, который больше не публикует образы; теперь они в
+[Garage](https://garagehq.deuxfleurs.fr/). У установки, где работал MinIO, его образ и том
+`minio_data` остались — один раз перенесите файлы:
+
+```bash
+git pull                     # набор: compose-файл и garage.toml
+# допишите в .env GARAGE_RPC_SECRET, GARAGE_ACCESS_KEY и GARAGE_SECRET_KEY (команды — в начале
+# .env.example), а строки MINIO_ACCESS_KEY / MINIO_SECRET_KEY пока оставьте
+docker compose up -d garage
+docker compose --profile migrate run --rm storage-migrate     # копирует все файлы, ничего не удаляет
+docker compose up -d                                          # сервер теперь работает с Garage
+docker compose --profile migrate rm -sf minio
+```
+
+Проверьте, что картинки и файлы открываются, затем удалите старый том
+(`docker volume rm <проект>_minio_data`, см. `docker volume ls`) и два ключа `MINIO_*`.
+
 ## Бэкапы
 
-Всё состояние лежит в именованных Docker-томах: `pgdata` (база), `minio_data`
+Всё состояние лежит в именованных Docker-томах: `pgdata` (база), `garage_data` и `garage_meta`
 (загруженные файлы), `caddy_data` (сертификаты).
 
 Консистентный дамп базы без остановки чего-либо:

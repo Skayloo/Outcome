@@ -7,7 +7,7 @@
 # Edge TLS via caddy-docker-proxy: the Caddyfile is GENERATED from container labels —
 # each service declares its own routing. Auto Let's Encrypt for every host in the labels.
 # Edge → frontend (nginx routes /api + /livekit to the API) → API (N replicas) →
-# Postgres (via PgBouncer) / Redis / MinIO / LiveKit. Data services are NOT published
+# Postgres (via PgBouncer) / Redis / Garage (S3 storage) / LiveKit. Data services are NOT published
 # on the host; only Caddy (80/443) and the LiveKit media ports are.
 name: outcome
 
@@ -83,9 +83,10 @@ services:
       OUTCOME_Server__TrustedProxies__1: "::1/128"
       OUTCOME_Server__TrustedProxies__2: "172.16.0.0/12"
       OUTCOME_JwtAuth__JwtKey: "${JWT_KEY}"
-      OUTCOME_Minio__Endpoint: "minio:9000"
-      OUTCOME_Minio__AccessKey: "${MINIO_ACCESS_KEY}"
-      OUTCOME_Minio__SecretKey: "${MINIO_SECRET_KEY}"
+      # File storage: Garage, over S3 (the settings keep MinIO's name — any S3 store fits).
+      OUTCOME_Minio__Endpoint: "garage:3900"
+      OUTCOME_Minio__AccessKey: "${GARAGE_ACCESS_KEY}"
+      OUTCOME_Minio__SecretKey: "${GARAGE_SECRET_KEY}"
       OUTCOME_Minio__Bucket: "${MINIO_BUCKET}"
       OUTCOME_Minio__UseSsl: "false"
       OUTCOME_Voice__LiveKitApiKey: "${LIVEKIT_API_KEY}"
@@ -103,7 +104,7 @@ services:
       postgres: { condition: service_healthy }
       pgbouncer: { condition: service_healthy }
       redis: { condition: service_healthy }
-      minio: { condition: service_started }
+      garage: { condition: service_healthy }
     deploy:
       replicas: ${SERVER_REPLICAS:-2}
       resources:
@@ -166,22 +167,65 @@ services:
       timeout: 3s
       retries: 20
 
-  minio:
-    # MinIO no longer publishes to Docker Hub; its images live on quay.io.
-    image: quay.io/minio/minio:latest
-    command: server /data --console-address ":9001"
+  # File storage (uploads, avatars, call recordings) — Garage, an S3 server. It sets itself up:
+  # --single-node lays out a one-machine cluster, --default-bucket makes the access key and the
+  # bucket from the variables below. The key id is "GK" + 24 hex characters and the secret 64 hex
+  # (.env.example has the commands) — Garage refuses other shapes.
+  garage:
+    image: dxflrs/garage:v2.4.1
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
     restart: unless-stopped
     <<: *logging
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
+      GARAGE_DEFAULT_ACCESS_KEY: ${GARAGE_ACCESS_KEY}
+      GARAGE_DEFAULT_SECRET_KEY: ${GARAGE_SECRET_KEY}
+      GARAGE_DEFAULT_BUCKET: ${MINIO_BUCKET}
     volumes:
-      - minio_data:/data
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "/garage", "status"]
       interval: 10s
       timeout: 5s
       retries: 10
+
+  # ── Upgrading from 1.31.78 or earlier (files in MinIO) — README, "Upgrading from MinIO". ────
+  # MinIO stopped publishing its images; an install that has run it still has the image and the
+  # `minio_data` volume. These two run only with `--profile migrate`: the old MinIO, and a
+  # one-time copy of every file into Garage (it never deletes anything; running it twice is fine).
+  minio:
+    profiles: ["migrate"]
+    image: quay.io/minio/minio:latest
+    # It cannot be downloaded any more — only the copy already on this machine is used.
+    pull_policy: never
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-}
+    volumes:
+      - minio_data:/data
+
+  storage-migrate:
+    profiles: ["migrate"]
+    image: rclone/rclone:1.68.2
+    command: ["copy", "old:${MINIO_BUCKET}", "new:${MINIO_BUCKET}", "--s3-no-check-bucket", "-v", "--stats-one-line"]
+    environment:
+      RCLONE_CONFIG_OLD_TYPE: s3
+      RCLONE_CONFIG_OLD_PROVIDER: Minio
+      RCLONE_CONFIG_OLD_ENDPOINT: http://minio:9000
+      RCLONE_CONFIG_OLD_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-}
+      RCLONE_CONFIG_OLD_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:-}
+      RCLONE_CONFIG_NEW_TYPE: s3
+      RCLONE_CONFIG_NEW_PROVIDER: Other
+      RCLONE_CONFIG_NEW_ENDPOINT: http://garage:3900
+      RCLONE_CONFIG_NEW_REGION: us-east-1
+      RCLONE_CONFIG_NEW_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY}
+      RCLONE_CONFIG_NEW_SECRET_ACCESS_KEY: ${GARAGE_SECRET_KEY}
+    depends_on:
+      minio: { condition: service_started }
+      garage: { condition: service_healthy }
 
   livekit:
     image: livekit/livekit-server:latest
@@ -239,6 +283,9 @@ services:
 
 volumes:
   pgdata:
+  garage_meta:
+  garage_data:
+  # Only for the upgrade from MinIO; remove it once the files are in Garage (README).
   minio_data:
   caddy_data:
   caddy_config:
