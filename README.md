@@ -45,7 +45,8 @@ software ([AGPL-3.0](https://github.com/Skayloo/Outcome-source-blue)).
   Media is encrypted in transit (DTLS-SRTP) between each participant and the SFU.
 - **Guest voice links** — invite someone into a voice channel with a link, no account needed.
 - **Direct messages, friends, blocking** — one-to-one conversations with the same feature
-  set as channels.
+  set as channels. Everyone on the instance is in everyone's DM list from the start: a new
+  person appears in every list at once, with an empty conversation.
 - **1-on-1 calls** — ring a friend, phone-style incoming-call screen; offline calls are
   parked and delivered when they open the app.
 - **A real native mobile app** for iOS and Android — not a webview wrapper: voice channels,
